@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exposé NewsBlur</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', Arial, sans-serif;
+    background: #0a0e1a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Animated background blobs */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -20%;
+    left: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: blob1 8s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -20%;
+    right: -10%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(16,185,129,0.13) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: blob2 10s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes blob1 { from { transform: translate(0,0) scale(1); } to { transform: translate(60px, 40px) scale(1.1); } }
+  @keyframes blob2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-50px, -30px) scale(1.08); } }
+
+  /* Top bar */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 32px;
+    background: rgba(10,14,26,0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    z-index: 100;
+  }
+  .topbar-brand {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topbar-brand span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: #6366f1;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #6366f1;
+  }
+  .lang-select {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .lang-select label {
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+  }
+  select {
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 14px;
+    font-size: 13px;
+    font-family: 'Cairo', sans-serif;
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  select:hover { border-color: #6366f1; }
+  select option { background: #1a1f35; color: #fff; }
+
+  /* Slide counter */
+  .counter {
+    position: fixed;
+    top: 70px;
+    right: 32px;
+    color: rgba(255,255,255,0.3);
+    font-size: 13px;
+    letter-spacing: 2px;
+    z-index: 100;
+  }
+  .counter .current { color: #6366f1; font-weight: 700; font-size: 16px; }
+
+  /* Progress bar */
+  .progress-bar {
+    position: fixed;
+    top: 57px;
+    left: 0; right: 0;
+    height: 2px;
+    background: rgba(255,255,255,0.05);
+    z-index: 101;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #10b981);
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* Slides wrapper */
+  .slides-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20px 90px;
+    min-height: 100vh;
+  }
+
+  .slide {
+    display: none;
+    width: 100%;
+    max-width: 820px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 48px 52px;
+    position: relative;
+    overflow: hidden;
+    animation: slideIn 0.4s cubic-bezier(.4,0,.2,1);
+  }
+  .slide.active { display: block; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Slide accent line */
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #6366f1, #10b981);
+    border-radius: 20px 0 0 20px;
+  }
+
+  /* Slide number badge */
+  .slide-badge {
+    position: absolute;
+    top: 24px;
+    left: 28px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 24px;
+    margin-top: 12px;
+    line-height: 1.4;
+    position: relative;
+  }
+
+  p {
+    font-size: 16px;
+    line-height: 1.9;
+    color: rgba(255,255,255,0.72);
+    margin-bottom: 14px;
+  }
+
+  ul {
+    list-style: none;
+    margin-top: 4px;
+  }
+  li {
+    font-size: 15.5px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.72);
+    margin-bottom: 12px;
+    padding-right: 22px;
+    position: relative;
+  }
+  li::before {
+    content: '▸';
+    position: absolute;
+    right: 0;
+    color: #6366f1;
+    font-size: 13px;
+    top: 2px;
+  }
+
+  a {
+    color: #10b981;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(16,185,129,0.3);
+    transition: border-color 0.2s;
+  }
+  a:hover { border-color: #10b981; }
+
+  /* Pros / Cons styling */
+  .pros, .cons {
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .pros {
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.2);
+  }
+  .cons {
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .pros p, .cons p { margin: 0; font-size: 15px; }
+  .pros-label, .cons-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pros-label { color: #10b981; }
+  .cons-label { color: #f87171; }
+
+  /* Comparison cards */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .compare-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 18px 16px;
+    transition: border-color 0.2s;
+  }
+  .compare-card.highlight {
+    border-color: rgba(99,102,241,0.5);
+    background: rgba(99,102,241,0.07);
+  }
+  .compare-card .brand {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .compare-card.highlight .brand { color: #818cf8; }
+  .compare-card p { font-size: 13px; margin: 0; }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+  }
+  .nav button {
+    background: rgba(99,102,241,0.15);
+    color: #fff;
+    border: 1px solid rgba(99,102,241,0.35);
+    padding: 10px 28px;
+    font-size: 14px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .nav button:hover {
+    background: rgba(99,102,241,0.35);
+    border-color: #6366f1;
+    transform: translateY(-2px);
+  }
+  .nav button:active { transform: translateY(0); }
+  .nav .dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .dot.active {
+    background: #6366f1;
+    transform: scale(1.4);
+    box-shadow: 0 0 6px #6366f1;
+  }
+
+  /* Signature */
+  .signature {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #818cf8;
+    z-index: 100;
+    letter-spacing: 1px;
+    transition: color 0.2s, text-shadow 0.2s;
+    white-space: nowrap;
+    text-shadow: 0 0 12px rgba(99,102,241,0.5);
+  }
+  .signature a {
+    color: #818cf8;
+    border-bottom: none;
+    text-decoration: none;
+    transition: color 0.2s, text-shadow 0.2s;
+  }
+  .signature:hover, .signature a:hover {
+    color: #a5b4fc;
+    text-shadow: 0 0 18px rgba(99,102,241,0.8);
+  }
+  .signature a:hover { border-bottom: none; }
+
+  @media (max-width: 600px) {
+    .slide { padding: 36px 28px; }
+    h2 { font-size: 20px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .topbar { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-brand"><span></span> NewsBlur Exposé</div>
+  <div class="lang-select">
+    <label for="language">اللغة / Langue</label>
+    <select id="language" onchange="changeLanguage()">
+      <option value="ar">العربية</option>
+      <option value="fr">Français</option>
+    </select>
+  </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+<!-- Slide Counter -->
+<div class="counter"><span class="current" id="counterCurrent">1</span> / <span id="counterTotal">7</span></div>
+
+<!-- Slides -->
+<div class="slides-wrapper">
+
+  <div class="slide active" id="slide1">
+    <div class="slide-badge">01 — Introduction</div>
+    <h2 data-ar="المقدمة" data-fr="Introduction">المقدمة</h2>
+    <p data-ar="NewsBlur هو موقع وتطبيق كيجمع لك الأخبار من مصادر مختلفة في مكان واحد. بحال RSS reader ذكي، ولكن فيه ميزات اجتماعية." data-fr="NewsBlur est une application et un site web qui rassemble les actualités de différentes sources en un seul endroit. C'est un lecteur RSS intelligent avec des fonctionnalités sociales.">NewsBlur هو موقع وتطبيق كيجمع لك الأخبار من مصادر مختلفة في مكان واحد. بحال RSS reader ذكي، ولكن فيه ميزات اجتماعية.</p>
+    <p data-ar="الهدف من العرض: نشرح كيفاش كيخدم، شنو الميزات ديالو، الإيجابيات والسلبيات، وشنو اللي كيخليه مميز على باقي المنصات." data-fr="Objectif : expliquer son fonctionnement, ses fonctionnalités, ses avantages et inconvénients, et ce qui le distingue des autres plateformes.">الهدف من العرض: نشرح كيفاش كيخدم، شنو الميزات ديالو، الإيجابيات والسلبيات، وشنو اللي كيخليه مميز على باقي المنصات.</p>
+  </div>
+
+  <div class="slide" id="slide2">
+    <div class="slide-badge">02 — Histoire</div>
+    <h2 data-ar="التاريخ والنشأة" data-fr="Histoire et Création">التاريخ والنشأة</h2>
+    <p data-ar="تأسس على يد Samuel Clay سنة 2009." data-fr="Fondé par Samuel Clay en 2009.">تأسس على يد Samuel Clay سنة 2009.</p>
+    <p data-ar="الهدف الأساسي: إنشاء منصة بسيطة باش الناس يقدرو يتبعو الأخبار ديالهم كلها بلا ما يضيعو الوقت في مواقع كثيرة." data-fr="Objectif initial : créer une plateforme simple permettant aux utilisateurs de suivre toutes leurs actualités facilement.">الهدف الأساسي: إنشاء منصة بسيطة باش الناس يقدرو يتبعو الأخبار ديالهم كلها بلا ما يضيعو الوقت في مواقع كثيرة.</p>
+    <p data-ar="تطور مع الوقت: من مجرد قارئ RSS إلى منصة متكاملة فيها فلترة ذكية وميزات اجتماعية." data-fr="Évolution : d'un simple lecteur RSS à une plateforme complète avec filtrage intelligent et fonctionnalités sociales.">تطور مع الوقت: من مجرد قارئ RSS إلى منصة متكاملة فيها فلترة ذكية وميزات اجتماعية.</p>
+  </div>
+
+  <div class="slide" id="slide3">
+    <div class="slide-badge">03 — Fonctionnement</div>
+    <h2 data-ar="كيفاش كيخدم NewsBlur" data-fr="Fonctionnement de NewsBlur">كيفاش كيخدم NewsBlur</h2>
+    <ul>
+      <li data-ar="جمع الأخبار: كيجمع المقالات من آلاف المواقع عبر RSS feeds." data-fr="Collecte des actualités via des flux RSS provenant de milliers de sources.">جمع الأخبار: كيجمع المقالات من آلاف المواقع عبر RSS feeds.</li>
+      <li data-ar="التصنيف والفلترة: يقدر ينظم الأخبار حسب الموضوع (رياضة، سياسة، تكنولوجيا…) أو حسب المصدر أو حسب تفضيلك." data-fr="Classement et filtrage : par thème, source ou préférence utilisateur.">التصنيف والفلترة: ينظم الأخبار حسب الموضوع أو المصدر أو حسب تفضيلك.</li>
+      <li data-ar="الفلترة الذكية: كتقدر تحجب أخبار معينة أو مصادر محددة. مثال: تبغي الأخبار ديال الرياضة بلا السياسة → كتفلترهم بسهولة." data-fr="Filtrage intelligent : possibilité de bloquer certains types d'articles. Exemple: uniquement les actualités sportives sans politique.">الفلترة الذكية: تحجب أخبار معينة بكل سهولة.</li>
+      <li data-ar="واجهة المستخدم: بسيطة وواضحة. Feed view وStory view. تقدر تميّز المقالات المفضلة عندك." data-fr="Interface : Feed view (vue globale) et Story view (vue détaillée), avec gestion des favoris.">واجهة المستخدم: Feed view وStory view — بسيطة وواضحة.</li>
+    </ul>
+  </div>
+
+  <div class="slide" id="slide4">
+    <div class="slide-badge">04 — Fonctionnalités</div>
+    <h2 data-ar="الميزات الرئيسية" data-fr="Fonctionnalités principales">الميزات الرئيسية</h2>
+    <ul>
+      <li data-ar="مزامنة بين الأجهزة: ويب، Android، iOS." data-fr="Synchronisation entre appareils : Web, Android, iOS.">مزامنة بين الأجهزة: ويب، Android، iOS.</li>
+      <li data-ar="فلترة حسب الذوق الشخصي: Smart feed وTraining feed." data-fr="Filtrage personnalisé : Smart feed et Training feed.">فلترة حسب الذوق الشخصي: Smart feed وTraining feed.</li>
+      <li data-ar="قراءة بلا اتصال بالإنترنت: Offline reading." data-fr="Lecture hors ligne (Offline reading).">قراءة بلا اتصال بالإنترنت: Offline reading.</li>
+      <li data-ar="ميزات اجتماعية: متابعة المستخدمين، مشاركة المقالات، التعليقات والمناقشات." data-fr="Fonctionnalités sociales : suivre, partager, commenter.">ميزات اجتماعية: متابعة، مشاركة، تعليقات.</li>
+      <li data-ar="تخصيص عالي: Themes، حجم الخط، Layout." data-fr="Personnalisation : thèmes, taille de police, mise en page.">تخصيص عالي: Themes، حجم الخط، Layout.</li>
+    </ul>
+  </div>
+
+  <div class="slide" id="slide5">
+    <div class="slide-badge">05 — Bilan</div>
+    <h2 data-ar="الإيجابيات والسلبيات" data-fr="Avantages et Inconvénients">الإيجابيات والسلبيات</h2>
+    <div class="pros">
+      <div class="pros-label" data-ar="الإيجابيات ✓" data-fr="Avantages ✓">الإيجابيات ✓</div>
+      <p data-ar="واجهة سهلة وواضحة، تحكم كامل في المصادر، نسخة مجانية متوفرة، مع نسخة مدفوعة للميزات الإضافية." data-fr="Interface claire, contrôle total sur les sources, version gratuite disponible, version payante pour les fonctionnalités avancées.">واجهة سهلة وواضحة، تحكم كامل في المصادر، نسخة مجانية متوفرة، مع نسخة مدفوعة للميزات الإضافية.</p>
+    </div>
+    <div class="cons">
+      <div class="cons-label" data-ar="السلبيات ✗" data-fr="Inconvénients ✗">السلبيات ✗</div>
+      <p data-ar="النسخة المجانية محدودة بعض الشيء، خصك شوية وقت باش تضبط الفلترة والتخصيص ديالك." data-fr="Version gratuite limitée, la configuration du filtrage peut prendre du temps pour les débutants.">النسخة المجانية محدودة بعض الشيء، خصك شوية وقت باش تضبط الفلترة والتخصيص ديالك.</p>
+    </div>
+  </div>
+
+  <div class="slide" id="slide6">
+    <div class="slide-badge">06 — Comparaison</div>
+    <h2 data-ar="مقارنة سريعة مع المنافسين" data-fr="Comparaison avec les concurrents">مقارنة سريعة مع المنافسين</h2>
+    <div class="compare-grid">
+      <div class="compare-card">
+        <div class="brand">Feedly</div>
+        <p data-ar="أكثر شهرة، واجهة حديثة، فلترة أقل ذكاء." data-fr="Plus populaire, interface moderne, filtrage moins avancé.">أكثر شهرة، واجهة حديثة، فلترة أقل ذكاء.</p>
+      </div>
+      <div class="compare-card">
+        <div class="brand">Inoreader</div>
+        <p data-ar="متخصص، ميزات مشابهة، لكن صعب شوية للمبتدئين." data-fr="Fonctionnalités similaires, moins simple pour les débutants.">متخصص، ميزات مشابهة، لكن صعب شوية للمبتدئين.</p>
+      </div>
+      <div class="compare-card highlight">
+        <div class="brand">NewsBlur ✦</div>
+        <p data-ar="فلترة ذكية قوية وميزات اجتماعية ممتازة — الأفضل في فئته." data-fr="Filtrage intelligent puissant et fonctionnalités sociales supérieures — le meilleur de sa catégorie.">فلترة ذكية قوية وميزات اجتماعية ممتازة.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide7">
+    <div class="slide-badge">07 — Conclusion</div>
+    <h2 data-ar="الخاتمة" data-fr="Conclusion">الخاتمة</h2>
+    <p data-ar="NewsBlur كتجمع بين إدارة ذكية للأخبار وتجربة اجتماعية ممتعة — منصة قوية للناس اللي بغاو يتحكمو في محتوى اللي كيوصلهم." data-fr="NewsBlur combine gestion intelligente des actualités et expérience sociale interactive — une plateforme puissante pour ceux qui veulent contrôler leur contenu.">NewsBlur كتجمع بين إدارة ذكية للأخبار وتجربة اجتماعية ممتعة.</p>
+    <p data-ar="مناسب للناس اللي بغاو يتبعو الأخبار بلا ضوضاء ومن مصادر موثوقة." data-fr="Idéal pour suivre les actualités sans bruit et de sources fiables.">مناسب للناس اللي بغاو يتبعو الأخبار بلا ضوضاء ومن مصادر موثوقة.</p>
+    <p data-ar="جربوه بأنفسكم:" data-fr="Essayez-le vous-même :">جربوه بأنفسكم:</p>
+    <p><a href="https://newsblur.com" target="_blank">→ newsblur.com</a></p>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button onclick="prevSlide()">&#8592; السابق</button>
+  <div class="dots" id="dots"></div>
+  <button onclick="nextSlide()">التالي &#8594;</button>
+</div>
+
+<!-- Signature -->
+<div class="signature">
+  <a href="https://www.instagram.com/hatimeddari?igsh=ZXd4b3E1MG1nY2M5" target="_blank">By Hatim Eddari</a>
+</div>
+
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  const dotsEl = document.getElementById('dots');
+  const progress = document.getElementById('progress');
+
+  document.getElementById('counterTotal').textContent = total;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+
+  function updateUI() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+    document.getElementById('counterCurrent').textContent = currentSlide + 1;
+    progress.style.width = ((currentSlide + 1) / total * 100) + '%';
+    // re-apply language
+    const lang = document.getElementById('language').value;
+    applyLang(lang);
+  }
+
+  function goTo(i) {
+    currentSlide = Math.max(0, Math.min(total - 1, i));
+    updateUI();
+  }
+
+  function nextSlide() { goTo(currentSlide + 1); }
+  function prevSlide() { goTo(currentSlide - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') nextSlide();
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') prevSlide();
+  });
+
+  function applyLang(lang) {
+    document.querySelectorAll('[data-fr]').forEach(el => {
+      const val = el.getAttribute('data-' + lang);
+      if (val) el.innerHTML = val;
+    });
+    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', lang);
+  }
+
+  function changeLanguage() {
+    const lang = document.getElementById('language').value;
+    applyLang(lang);
+  }
+
+  updateUI();
+</script>
+</body>
+</html>
